@@ -3,17 +3,30 @@ package org.example.service;
 import org.example.model.Order;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.math.RoundingMode;
 
 public class CementOrderService {
 
-    private double basePricePerKg;
-    private double startDiscount;
-    private double discountStep;
+    private final BigDecimal basePricePerKg;
+    private final BigDecimal startDiscount;
+    private final BigDecimal discountStep;
 
-    public CementOrderService(double basePricePerKg, double discountStep, double startDiscount) {
+    public CementOrderService(BigDecimal basePricePerKg, BigDecimal discountStep, BigDecimal startDiscount) {
+
+        if(basePricePerKg == null || basePricePerKg.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("basePricePerKg cannot be zero or negative");
+        }
+        if(discountStep == null || discountStep.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("discountStep cannot be negative");
+        }
+        if(startDiscount == null || startDiscount.compareTo(BigDecimal.ZERO) < 0 || startDiscount.compareTo(BigDecimal.ONE) > 0) {
+            throw new IllegalArgumentException("startDiscount can be in range from 0.0 to 1.0");
+        }
+
         this.basePricePerKg = basePricePerKg;
         this.discountStep = discountStep;
         this.startDiscount = startDiscount;
@@ -26,27 +39,34 @@ public class CementOrderService {
                 .sorted(Comparator.comparing(order -> order.getOrderDate()))
                 .toList();
 
-        Map<String, Double> companyCosts = new HashMap<>();
+        Map<String, BigDecimal> companyCosts = new HashMap<>();
 
-        double currentDiscount = this.startDiscount;
+        BigDecimal currentDiscount = this.startDiscount;
 
         for (Order order : sortedOrders) {
 
-            double orderCost = order.getCementCount() * this.basePricePerKg * (1 - currentDiscount);
+            BigDecimal count = BigDecimal.valueOf(order.getCementCount());
+
+            BigDecimal discountMultiplier = BigDecimal.ONE.subtract(currentDiscount);
+
+            BigDecimal orderCost = count.multiply(this.basePricePerKg).multiply(discountMultiplier);
+
+
+            orderCost = orderCost.setScale(2, RoundingMode.HALF_UP);
 
             if (companyCosts.containsKey(order.getCompanyName())) {
 
-                double oldCost = companyCosts.get(order.getCompanyName());
-                companyCosts.put(order.getCompanyName(), oldCost + orderCost);
+                BigDecimal oldCost = companyCosts.get(order.getCompanyName());
+                companyCosts.put(order.getCompanyName(), oldCost.add(orderCost));
 
             } else {
 
                 companyCosts.put(order.getCompanyName(), orderCost);
             }
 
-            currentDiscount = currentDiscount - this.discountStep;
-            if (currentDiscount < 0) {
-                currentDiscount = 0;
+            currentDiscount = currentDiscount.subtract(this.discountStep);
+            if (currentDiscount.compareTo(BigDecimal.ZERO) < 0) {
+                currentDiscount = BigDecimal.ZERO;
             }
         }
 
@@ -54,7 +74,7 @@ public class CementOrderService {
 
         for(String companyName : companyCosts.keySet()) {
 
-            double totalCost = companyCosts.get(companyName);
+            BigDecimal totalCost = companyCosts.get(companyName);
             String resultLine = companyName + " - " + totalCost;
 
             linesToWrite.add(resultLine);
