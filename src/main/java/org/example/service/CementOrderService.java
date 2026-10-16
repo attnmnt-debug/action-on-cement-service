@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.exception.OrderReadException;
 import org.example.model.Order;
 
 import java.io.IOException;
@@ -83,7 +84,7 @@ public class CementOrderService {
         try {
             Files.write(Paths.get(outputFilePath), linesToWrite);
         } catch (IOException e) {
-            System.out.println("Error writing output file " + e.getMessage());
+            throw new OrderReadException("Error writing output file: " + outputFilePath, e);
         }
     }
 }
