@@ -3,6 +3,7 @@ package org.example;
 import org.example.adapter.HashOrderReader;
 import org.example.adapter.OrderReader;
 import org.example.adapter.TxtOrderReader;
+import org.example.exception.OrderProcessingException;
 import org.example.exception.OrderReadException;
 import org.example.model.Order;
 import org.example.service.CementOrderService;
@@ -34,7 +35,7 @@ public class Main {
             cementOrderService.processAndSaveOrders(allOrders, "result.txt");
             System.out.println("Orders processed successfully");
 
-        } catch (OrderReadException e) {
+        } catch (OrderProcessingException e) {
             System.out.println("Critical error while reading file, file are corrupted or missing : ");
             System.out.println(e.getMessage());
         }
